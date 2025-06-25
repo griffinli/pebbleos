@@ -204,7 +204,7 @@ def get_target_platforms(ctx):
         ctx.fatal("No valid targetPlatforms specified in appinfo.json. Valid options are {}"
                   .format(supported_platforms))
 
-    ctx.env.TARGET_PLATFORMS = sorted([p.encode('utf-8') for p in target_platforms], reverse=True)
+    ctx.env.TARGET_PLATFORMS = sorted([p for p in target_platforms], reverse=True)
     return target_platforms
 
 
