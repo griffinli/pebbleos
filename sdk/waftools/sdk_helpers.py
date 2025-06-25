@@ -120,7 +120,7 @@ def append_to_attr(self, attr, new_values):
 
 
 def configure_libraries(ctx, libraries):
-    dependencies = libraries.keys()
+    dependencies = list(libraries.keys())
     lib_json = []
     lib_resources_json = {}
 
@@ -293,7 +293,7 @@ def process_package(ctx, package, root_lib_node=None):
                                        lib_node.ant_glob(['**/*.js', '**/*.json'],
                                                          excl="**/*.min.js")]
 
-            dependencies = libinfo['dependencies'].keys() if 'dependencies' in libinfo else []
+            dependencies = list(libinfo['dependencies'].keys()) if 'dependencies' in libinfo else []
             return libinfo, resources_json, dependencies
 
 
