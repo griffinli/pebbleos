@@ -147,8 +147,8 @@ def configure_platform(ctx, platform):
     :return: N/A
     """
     pebble_sdk_root = get_node_from_abspath(ctx, ctx.env.PEBBLE_SDK_ROOT)
-    ctx.env.PLATFORM = pebble_platforms[platform.decode('utf-8')]
-    ctx.env.PEBBLE_SDK_PLATFORM = pebble_sdk_root.find_node(platform.decode('utf-8')).abspath()
+    ctx.env.PLATFORM = pebble_platforms[platform]
+    ctx.env.PEBBLE_SDK_PLATFORM = pebble_sdk_root.find_node(str(platform)).abspath()
     ctx.env.PLATFORM_NAME = ctx.env.PLATFORM['NAME']
 
     for attribute in ['DEFINES']:  # Attributes with list values
@@ -160,7 +160,7 @@ def configure_platform(ctx, platform):
     ctx.msg("Found Pebble SDK for {} in:".format(platform), ctx.env.PEBBLE_SDK_PLATFORM)
 
     process_info = (
-        pebble_sdk_root.find_node(platform.decode('utf-8')).find_node('include/pebble_process_info.h'))
+        pebble_sdk_root.find_node(str(platform)).find_node('include/pebble_process_info.h'))
     set_env_sdk_version(ctx, process_info)
 
     if is_sdk_2x(ctx.env.SDK_VERSION_MAJOR, ctx.env.SDK_VERSION_MINOR):
