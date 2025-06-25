@@ -180,7 +180,6 @@ def process_message_keys(task_gen):
     json_task.dep_vars = message_keys
 
 
-@Task.update_outputs
 class message_key_header(Task.Task):
     """
     Task class for creating a header file with the message key definitions for the project
@@ -197,7 +196,6 @@ class message_key_header(Task.Task):
                 f.write("extern uint32_t MESSAGE_KEY_{};\n".format(k))
 
 
-@Task.update_outputs
 class message_key_definitions(Task.Task):
     """
     Task class for creating a C definitions file with the message key definitions for the project
@@ -214,7 +212,6 @@ class message_key_definitions(Task.Task):
                 f.write("uint32_t MESSAGE_KEY_{} = {};\n".format(k, v))
 
 
-@Task.update_outputs
 class message_key_json(Task.Task):
     """
     Task class for creating a JSON file with the message key definitions for the project
