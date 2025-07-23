@@ -27,6 +27,7 @@
 #include "apps/prf_apps/mfg_certification_app.h"
 #include "apps/prf_apps/mfg_display_app.h"
 #include "apps/prf_apps/mfg_hrm_app.h"
+#include "apps/prf_apps/mfg_mic_app.h"
 #include "apps/prf_apps/mfg_program_color_app.h"
 #include "apps/prf_apps/mfg_runin_app.h"
 #include "apps/prf_apps/mfg_speaker_app.h"
@@ -104,9 +105,13 @@ static void prv_select_als(int index, void *context) {
   launcher_task_add_callback(prv_launch_app_cb, (void*) mfg_als_app_get_info());
 }
 
-#if PLATFORM_ASTERIX && defined(MANUFACTURING_FW)
+#if PLATFORM_ASTERIX
 static void prv_select_speaker(int index, void *context) {
   launcher_task_add_callback(prv_launch_app_cb, (void*) mfg_speaker_app_get_info());
+}
+
+static void prv_select_mic(int index, void *context) {
+  launcher_task_add_callback(prv_launch_app_cb, (void*) mfg_mic_app_get_info());
 }
 #endif
 
@@ -215,8 +220,9 @@ static size_t prv_create_menu_items(SimpleMenuItem** out_menu_items) {
 #if BT_CONTROLLER_DA14681
     { .title = "Test BTLE",         .callback = prv_select_btle },
 #endif
-#if PLATFORM_ASTERIX && defined(MANUFACTURING_FW)
-    { .title = "Test Speaker",          .callback = prv_select_speaker },
+#if PLATFORM_ASTERIX
+    { .title = "Test Speaker",      .callback = prv_select_speaker },
+    { .title = "Test Microphone",   .callback = prv_select_mic },
 #endif
     { .title = "Certification",     .callback = prv_select_certification },
     { .title = "Program Color",     .callback = prv_select_program_color },

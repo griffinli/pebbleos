@@ -383,7 +383,11 @@ static void prv_information_window_push(SettingsSystemData *data) {
   info->subtitle_text[SystemInformationItemHardware]   = info->hw_version_string;
   info->subtitle_text[SystemInformationItemSerial]     = info->serial_string;
   info->subtitle_text[SystemInformationItemUptime]     = info->uptime_string;
+#if PLATFORM_ASTERIX || PLATFORM_OBELIX
+  info->subtitle_text[SystemInformationItemLegal]      = "repebble.com/terms";
+#else
   info->subtitle_text[SystemInformationItemLegal]      = "pebble.com/legal";
+#endif
 
   window_init(&data->window, WINDOW_NAME("System Information"));
   window_set_user_data(&data->window, data);
@@ -426,7 +430,7 @@ static int16_t prv_draw_generic_mark(GContext *ctx, GBitmap *mark, GPoint origin
 #define MARK_PADDING 10
 
 static void prv_draw_rt_cell_rect(GContext *ctx, const Layer *cell_layer, GBitmap *mark,
-                                  const char *text, UNUSED bool is_selected) {
+                                  const char *text, PBL_UNUSED bool is_selected) {
   int16_t x = (MARK_PADDING / 2);
   GRect box = cell_layer->bounds;
   const bool highlight = menu_cell_layer_is_highlighted(cell_layer);

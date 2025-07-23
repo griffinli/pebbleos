@@ -62,7 +62,8 @@ typedef enum {
 } GPIOSpeed_TypeDef;
 
 typedef struct {
-  uint8_t exti_line;
+  GPIO_TypeDef* const peripheral; ///< One of GPIOX. For example, GPIOA.
+  const uint32_t gpio_pin; ///< One of GPIO_Pin_X.
 } ExtiConfig;
 
 typedef struct {
@@ -86,6 +87,22 @@ typedef struct {
   pin_function func;
   int flags;
 } Pinmux;
+
+typedef struct {
+  GPT_HandleTypeDef handle;
+  GPT_ClockConfigTypeDef clock_config;
+  uint16_t value;
+  uint16_t resolution;
+  int enabled;
+  uint16_t channel;
+  uint8_t  is_comp;
+} PwmState;
+
+typedef struct {
+  Pinmux pwm_pin;
+  PwmState *state;
+} PwmConfig;
+
 
 typedef enum {
   ActuatorOptions_Ctl = 1 << 0, ///< GPIO is used to enable / disable vibe
@@ -126,11 +143,12 @@ typedef const struct SPISlavePort SPISlavePort;
 typedef const struct I2CBus I2CBus;
 typedef const struct I2CSlavePort I2CSlavePort;
 typedef const struct HRMDevice HRMDevice;
-typedef const struct VoltageMonitorDevice VoltageMonitorDevice;
-typedef const struct TemperatureSensor TemperatureSensor;
 typedef const struct MicDevice MicDevice;
 typedef const struct QSPIPort QSPIPort;
 typedef const struct QSPIFlash QSPIFlash;
+
+#include "drivers/i2c_definitions.h"
+#include "drivers/sf32lb52/i2c_hal_definitions.h"
 
 void board_early_init(void);
 void board_init(void);

@@ -8,11 +8,10 @@
 #include "drivers/nrf5/i2c_hal_definitions.h"
 #include "drivers/nrf5/spi_definitions.h"
 #include "drivers/nrf5/uart_definitions.h"
+#include "drivers/pmic/npm1300.h"
 #include "drivers/pwm.h"
 #include "drivers/qspi_definitions.h"
 #include "drivers/rtc.h"
-#include "drivers/temperature.h"
-#include "drivers/voltage_monitor.h"
 #include "flash_region/flash_region.h"
 #include "kernel/util/sleep.h"
 #include "system/passert.h"
@@ -25,6 +24,7 @@
 #include <nrfx_qspi.h>
 #include <nrfx_spim.h>
 #include <nrfx_twim.h>
+#include <nrfx_pdm.h>
 
 static QSPIPortState s_qspi_port_state;
 static QSPIPort QSPI_PORT = {
@@ -161,7 +161,30 @@ static const I2CSlavePort I2C_SLAVE_DA7212 = {
 
 I2CSlavePort *const I2C_DA7212 = &I2C_SLAVE_DA7212;
 
+static const I2CSlavePort I2C_SLAVE_MMC5603NJ = {
+    .bus = &I2C_IIC2_BUS,
+    .address = 0x30 << 1,
+};
+
+I2CSlavePort *const I2C_MMC5603NJ = &I2C_SLAVE_MMC5603NJ;
+
+static const I2CSlavePort I2C_SLAVE_BMP390 = {
+    .bus = &I2C_IIC2_BUS,
+    .address = 0x76 << 1,
+};
+
+I2CSlavePort *const I2C_BMP390 = &I2C_SLAVE_BMP390;
+
+static const I2CSlavePort I2C_SLAVE_LSM6D = {
+    .bus = &I2C_IIC2_BUS,
+    .address = 0x6A << 1,
+};
+
+I2CSlavePort *const I2C_LSM6D = &I2C_SLAVE_LSM6D;
+
 IRQ_MAP_NRFX(I2S, nrfx_i2s_0_irq_handler);
+
+IRQ_MAP_NRFX(PDM, NRFX_PDM_INST_HANDLER_GET(0));
 
 /* PERIPHERAL ID 11 */
 
@@ -174,15 +197,17 @@ IRQ_MAP_NRFX(PWM0, nrfx_pwm_0_irq_handler);
 
 IRQ_MAP_NRFX(RTC1, rtc_irq_handler);
 
+const Npm1300Config NPM1300_CONFIG = {
+  .chg_current_ma = 152,
+  .dischg_limit_ma = 200,
+  .term_current_pct = 10,
+  .thermistor_beta = 3380,
+};
+
 void board_early_init(void) {
   PBL_LOG(LOG_LEVEL_ERROR, "asterix early init");
 
-  /* shared SPI chip outputs */
-  nrf_gpio_cfg_output(15);
-  nrf_gpio_cfg_output(16);
-  nrf_gpio_pin_set(15);
-  
-  nrf_gpio_pin_set(16);
+  NRF_NVMC->ICACHECNF |= NVMC_ICACHECNF_CACHEEN_Msk;
 
   nrf_clock_lf_src_set(NRF_CLOCK, NRF_CLOCK_LFCLK_XTAL);
   nrf_clock_event_clear(NRF_CLOCK, NRF_CLOCK_EVENT_LFCLKSTARTED);
@@ -200,12 +225,11 @@ void board_init(void) {
   i2c_init(&I2C_NPMC_IIC1_BUS);
   i2c_init(&I2C_IIC2_BUS);
 
-#if 0
-  i2c_init(&I2C_PMIC_HRM_BUS);
-
-  voltage_monitor_device_init(VOLTAGE_MONITOR_ALS);
-  voltage_monitor_device_init(VOLTAGE_MONITOR_BATTERY);
-
-  qspi_init(QSPI, BOARD_NOR_FLASH_SIZE);
-#endif
+  uint8_t da7212_powerdown[] = { 0xFD /* SYSTEM_ACTIVE */, 0 };
+  i2c_use(I2C_DA7212);
+  i2c_write_block(I2C_DA7212, 2, da7212_powerdown);
+  i2c_release(I2C_DA7212);
+  
+  // XXX: FIRM-264: stop mode breaks NimBLE
+  stop_mode_disable(InhibitorMain);
 }

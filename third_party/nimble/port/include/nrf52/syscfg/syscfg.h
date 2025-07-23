@@ -18,7 +18,7 @@
 
 /*** Repository @apache-mynewt-core info */
 #ifndef MYNEWT_VAL_REPO_HASH_APACHE_MYNEWT_CORE
-#define MYNEWT_VAL_REPO_HASH_APACHE_MYNEWT_CORE "01bda44b9f58d847495025e5160c66c55651dc81"
+#define MYNEWT_VAL_REPO_HASH_APACHE_MYNEWT_CORE "71b9c035d88e88cea2fd0db5dcdd7bdaf6973934"
 #endif
 
 #ifndef MYNEWT_VAL_REPO_VERSION_APACHE_MYNEWT_CORE
@@ -27,7 +27,7 @@
 
 /*** Repository @apache-mynewt-nimble info */
 #ifndef MYNEWT_VAL_REPO_HASH_APACHE_MYNEWT_NIMBLE
-#define MYNEWT_VAL_REPO_HASH_APACHE_MYNEWT_NIMBLE "a6b2f3f9af8b7b46f51f3af3a89d656dffd9483e"
+#define MYNEWT_VAL_REPO_HASH_APACHE_MYNEWT_NIMBLE "93d716b43e2df6e4f18cf39d887395d0ba7fc23e"
 #endif
 
 #ifndef MYNEWT_VAL_REPO_VERSION_APACHE_MYNEWT_NIMBLE
@@ -45,7 +45,7 @@
 
 /*** Repository @syscfg info */
 #ifndef MYNEWT_VAL_REPO_HASH_SYSCFG
-#define MYNEWT_VAL_REPO_HASH_SYSCFG "13675fd87d5b8f6c2b8268ab65dc653be78ce7a9-dirty"
+#define MYNEWT_VAL_REPO_HASH_SYSCFG "3bdec47963cc638a2a9296673b24588381ecf196-dirty"
 #endif
 
 #ifndef MYNEWT_VAL_REPO_VERSION_SYSCFG
@@ -2196,7 +2196,6 @@
 #define MYNEWT_VAL_BLE_SM_IO_CAP (BLE_HS_IO_DISPLAY_YESNO)
 #endif
 
-/* Overridden by targets/nrf52 (defined by @apache-mynewt-nimble/nimble/host) */
 #ifndef MYNEWT_VAL_BLE_SM_KEYPRESS
 #define MYNEWT_VAL_BLE_SM_KEYPRESS (0)
 #endif
@@ -2254,6 +2253,19 @@
 
 #ifndef MYNEWT_VAL_BLE_STORE_MAX_CCCDS
 #define MYNEWT_VAL_BLE_STORE_MAX_CCCDS (8)
+#endif
+
+/*** @apache-mynewt-nimble/nimble/host/services/bas */
+#ifndef MYNEWT_VAL_BLE_SVC_BAS_BATTERY_LEVEL_NOTIFY_ENABLE
+#define MYNEWT_VAL_BLE_SVC_BAS_BATTERY_LEVEL_NOTIFY_ENABLE (1)
+#endif
+
+#ifndef MYNEWT_VAL_BLE_SVC_BAS_BATTERY_LEVEL_READ_PERM
+#define MYNEWT_VAL_BLE_SVC_BAS_BATTERY_LEVEL_READ_PERM (0)
+#endif
+
+#ifndef MYNEWT_VAL_BLE_SVC_BAS_SYSINIT_STAGE
+#define MYNEWT_VAL_BLE_SVC_BAS_SYSINIT_STAGE (303)
 #endif
 
 /*** @apache-mynewt-nimble/nimble/host/services/dis */
@@ -2739,6 +2751,7 @@
 #define MYNEWT_PKG_apache_mynewt_nimble__nimble_controller 1
 #define MYNEWT_PKG_apache_mynewt_nimble__nimble_drivers_nrf5x 1
 #define MYNEWT_PKG_apache_mynewt_nimble__nimble_host 1
+#define MYNEWT_PKG_apache_mynewt_nimble__nimble_host_services_bas 1
 #define MYNEWT_PKG_apache_mynewt_nimble__nimble_host_services_dis 1
 #define MYNEWT_PKG_apache_mynewt_nimble__nimble_host_services_gap 1
 #define MYNEWT_PKG_apache_mynewt_nimble__nimble_host_services_gatt 1

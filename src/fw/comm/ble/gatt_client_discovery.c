@@ -396,12 +396,18 @@ bool bt_driver_cb_gatt_client_discovery_complete(GAPLEConnection *connection, BT
       // it's possible the discovery completed before we handled the timeout, in which case
       // we get a BTErrnoOK which means we will get a completion event already
       finalize_discovery = (errno != BTErrnoOK);
+    } else if (errno == BTErrnoServiceDiscoveryDisconnected) {
+      finalize_discovery = false;
     }
-    // Completion of service discovery implies we are about to have more BLE
-    // traffic (for example, ANCS notifications, PPoG communication). Keep the
-    // channel at a high throughput speed for a little bit longer to handle these bursts.
-    conn_mgr_set_ble_conn_response_time(connection, BtConsumerLeServiceDiscovery,
-                                        ResponseTimeMin, 10);
+
+    if (errno == BTErrnoOK) {
+      // Completion of service discovery implies we are about to have more BLE
+      // traffic (for example, ANCS notifications, PPoG communication). Keep the
+      // channel at a high throughput speed for a little bit longer to handle these bursts.
+      conn_mgr_set_ble_conn_response_time(connection, BtConsumerLeServiceDiscovery,
+                                          ResponseTimeMin, 10);
+    }
+
     if (finalize_discovery) {
       prv_finalize_discovery(connection, errno);
     }

@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
+#include <stdio.h>
+
 #include "debug/power_tracking.h"
 #include "drivers/mcu.h"
 #include "drivers/rtc.h"
 #include "drivers/task_watchdog.h"
 
+#include "console/prompt.h"
 #include "kernel/memory_layout.h"
 #include "kernel/pbl_malloc.h"
 #include "os/tick.h"
@@ -35,6 +38,10 @@
 #define NRF5_COMPATIBLE
 #define SF32LB52_COMPATIBLE
 #include <mcu.h>
+
+#if defined(MICRO_FAMILY_NRF5)
+#include <hal/nrf_nvmc.h>
+#endif
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -89,6 +96,14 @@ extern void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime ) {
   // See: http://infocenter.arm.com/help/topic/com.arm.doc.dui0552a/BABGGICD.html#BGBHDHAI
   __disable_irq();
 
+#if defined(MICRO_FAMILY_NRF5)
+  // We're going to sleep, so turn off the caches (they consume quiescent
+  // power).  It's more efficient to have them on when we're awake, but for
+  // now, they gotta go.  This holds true even if we're not going to sleep
+  // long enough to trigger stop mode.
+  NRF_NVMC->ICACHECNF &= ~NVMC_ICACHECNF_CACHEEN_Msk;
+#endif
+
   power_tracking_stop(PowerSystemMcuCoreRun);
 
   if (eTaskConfirmSleepModeStatus() != eAbortSleep) {
@@ -100,6 +115,9 @@ extern void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime ) {
       // TODO: It would be nice if there was a clean way to actually 'suppress
       // ticks' while in sleep mode. If we figure that out, we would likely
       // need to update how this calculation works
+      //
+      // TODO(nrf5): systick is actually suppressed while in sleep mode!  so
+      // this calculation is bogus
       uint32_t systick_start = SysTick->VAL;
 
       power_tracking_start(PowerSystemMcuCoreSleep);
@@ -139,6 +157,10 @@ extern void vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime ) {
   }
 
   power_tracking_start(PowerSystemMcuCoreRun);
+
+#if defined(MICRO_FAMILY_NRF5)
+  NRF_NVMC->ICACHECNF |= NVMC_ICACHECNF_CACHEEN_Msk;
+#endif
 
   __enable_irq();
 }
@@ -231,6 +253,14 @@ bool vPortCorrectTicks(void) {
   return need_context_switch;
 }
 
+bool vPortEnableTimer() {
+#if defined(MICRO_FAMILY_NRF5)
+  rtc_enable_synthetic_systick();
+  return true;
+#else
+  return false;
+#endif
+}
 
 // CPU analytics
 ///////////////////////////////////////////////////////////
@@ -247,13 +277,22 @@ void dump_current_runtime_stats(void) {
   uint32_t tot_time = running_ms + sleep_ms + stop_ms;
 
   char buf[80];
-  dbgserial_putstr_fmt(buf, sizeof(buf), "Run:   %"PRIu32" ms (%"PRIu32" %%)",
-                       running_ms, (running_ms * 100) / tot_time);
-  dbgserial_putstr_fmt(buf, sizeof(buf), "Sleep: %"PRIu32" ms (%"PRIu32" %%)",
-                       sleep_ms, (sleep_ms * 100) / tot_time);
-  dbgserial_putstr_fmt(buf, sizeof(buf), "Stop:  %"PRIu32" ms (%"PRIu32" %%)",
-                       stop_ms, (stop_ms * 100) / tot_time);
-  dbgserial_putstr_fmt(buf, sizeof(buf), "Tot:   %"PRIu32" ms", tot_time);
+  snprintf(buf, sizeof(buf), "Run:   %"PRIu32" ms (%"PRIu32" %%)",
+           running_ms, (running_ms * 100) / tot_time);
+  prompt_send_response(buf);
+  snprintf(buf, sizeof(buf), "Sleep: %"PRIu32" ms (%"PRIu32" %%)",
+           sleep_ms, (sleep_ms * 100) / tot_time);
+  prompt_send_response(buf);
+  snprintf(buf, sizeof(buf), "Stop:  %"PRIu32" ms (%"PRIu32" %%)",
+           stop_ms, (stop_ms * 100) / tot_time);
+  prompt_send_response(buf);
+  snprintf(buf, sizeof(buf), "Tot:   %"PRIu32" ms", tot_time);
+  prompt_send_response(buf);
+  
+  uint32_t rtc_ticks = rtc_get_ticks();
+  uint32_t rtos_ticks = xTaskGetTickCount();
+  snprintf(buf, sizeof(buf), "RTC ticks: %"PRIu32", RTOS ticks: %"PRIu32, rtc_ticks, rtos_ticks);
+  prompt_send_response(buf);
 }
 
 void analytics_external_collect_cpu_stats(void) {

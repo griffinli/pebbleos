@@ -1,5 +1,6 @@
 #pragma once
 
+#include "drivers/pmic/npm1300.h"
 #include "services/imu/units.h"
 #include "util/size.h"
 
@@ -9,6 +10,7 @@
 #define BOARD_LSE_MODE RCC_LSE_Bypass
 
 #define BOARD_RTC_INST NRF_RTC1
+#define BOARD_RTC_IRQN RTC1_IRQn
 
 static const BoardConfig BOARD_CONFIG = {
   .ambient_light_dark_threshold = 100,
@@ -83,13 +85,10 @@ static const BoardConfigPower BOARD_CONFIG_POWER = {
 
   .low_power_threshold = 5,
 
-  // Based on measurements from v4.0-beta16.
-  // Typical Connected Current at VBAT without HRM ~520uA
-  // Added draw with HRM on : ~1.5mA ==> Average impact (5% per hour + 1 hour continuous / day)
-  //    (.05 * 23/24 + 1.0 * 1/24) * 1.5mA = ~134uA
-  // Assume ~150uA or so for notifications & user interaction
-  // Total Hours = 125 mA * hr / (.520 + .134 + 150)mA = 155 hours
-  .battery_capacity_hours = 155 /* TODO */,
+  // Current is not great but getting there.  1 mA or so on 130 mAh battery;
+  // Memfault reports 160h expected battery, but we'll conservatively
+  // estimate 130 hours
+  .battery_capacity_hours = 130,
 };
 
 static const BoardConfigMag BOARD_CONFIG_MAG = {
@@ -239,11 +238,6 @@ static const BoardConfigSharpDisplay BOARD_CONFIG_DISPLAY = {
   },
 };
 
-extern const VoltageMonitorDevice * VOLTAGE_MONITOR_ALS;
-extern const VoltageMonitorDevice * VOLTAGE_MONITOR_BATTERY;
-
-extern const TemperatureSensor * const TEMPERATURE_SENSOR;
-
 extern HRMDevice * const HRM;
 
 extern QSPIPort * const QSPI;
@@ -255,3 +249,8 @@ extern I2CSlavePort * const I2C_NPM1300;
 extern I2CSlavePort * const I2C_DRV2604;
 extern I2CSlavePort * const I2C_OPT3001;
 extern I2CSlavePort * const I2C_DA7212;
+extern I2CSlavePort * const I2C_MMC5603NJ;
+extern I2CSlavePort * const I2C_BMP390;
+extern I2CSlavePort * const I2C_LSM6D;
+
+extern const Npm1300Config NPM1300_CONFIG;

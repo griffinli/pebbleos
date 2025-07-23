@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "board/board.h"
-#include "system/passert.h"
-
 #include "bf0_hal.h"
 #include "bf0_hal_efuse.h"
 #include "bf0_hal_lcpu_config.h"
-#include "bf0_hal_rcc.h"
 #include "bf0_hal_pmu.h"
+#include "bf0_hal_rcc.h"
+#include "board/board.h"
+#include "system/passert.h"
+
 
 #define HCPU_FREQ_MHZ 240
 
@@ -67,6 +67,30 @@ UARTDevice *const DBG_UART = &DBG_UART_DEVICE;
 
 IRQ_MAP(USART1, uart_irq_handler, DBG_UART);
 IRQ_MAP(DMAC1_CH1, uart_dma_irq_handler, DBG_UART);
+
+static PwmState s_pwm1_ch1_state = {
+    .handle = {
+        .Instance = hwp_gptim1,
+        .Init = {
+             .CounterMode = GPT_COUNTERMODE_UP,
+        },
+
+    },
+    .clock_config = {
+        .ClockSource = GPT_CLOCKSOURCE_INTERNAL,
+    },
+    .channel = 1,
+};
+
+static PwmConfig s_pwm1_ch1 = {
+    .pwm_pin = {
+        .pad = PAD_PA01,
+        .func = GPTIM1_CH1,
+        .flags = PIN_NOPULL,
+    },
+    .state = &s_pwm1_ch1_state,
+};
+PwmConfig *const PWM1_CH1 = &s_pwm1_ch1;
 
 #ifdef NIMBLE_HCI_SF32LB52_TRACE_BINARY
 static UARTDeviceState s_hci_trace_uart_state = {
@@ -119,6 +143,53 @@ static QSPIFlash QSPI_FLASH_DEVICE = {
 };
 QSPIFlash *const QSPI_FLASH = &QSPI_FLASH_DEVICE;
 
+static I2CDeviceState s_i2c_device_state_1;
+
+static struct I2CBusHal s_i2c_bus_hal_1 = {
+    .i2c_state = &s_i2c_device_state_1,
+    .hi2c =
+        {
+            .Instance = I2C1,
+            .Init = {
+                .AddressingMode = I2C_ADDRESSINGMODE_7BIT,
+                .ClockSpeed = 400000,
+                .GeneralCallMode = I2C_GENERALCALL_DISABLE,
+            },
+            .Mode = HAL_I2C_MODE_MASTER,
+
+        },
+
+    .device_name = "i2c1",
+    .scl =
+        {
+            .pad = PAD_PA30,
+            .func = I2C1_SCL,
+            .flags = PIN_NOPULL,
+        },
+    .sda =
+        {
+            .pad = PAD_PA33,
+            .func = I2C1_SDA,
+            .flags = PIN_NOPULL,
+        },
+    .core = CORE_ID_HCPU,
+    .module = RCC_MOD_I2C1,
+    .irqn = I2C1_IRQn,
+    .irq_priority = 5,
+    .timeout = 5000,
+};
+
+static I2CBusState s_i2c_bus_state_1;
+
+static I2CBus s_i2c_bus_1 = {
+    .hal = &s_i2c_bus_hal_1,
+    .state = &s_i2c_bus_state_1,
+};
+
+I2CBus *const I2C1_BUS = &s_i2c_bus_1;
+
+IRQ_MAP(I2C1, i2c_irq_handler, I2C1_BUS);
+
 const BoardConfigPower BOARD_CONFIG_POWER = {
   .low_power_threshold = 5U,
   .battery_capacity_hours = 100U,
@@ -150,16 +221,22 @@ void board_early_init(void) {
   BSP_System_Config();
 
   HAL_HPAON_StartGTimer();
+#ifdef SF32LB52_USE_LXT
   HAL_PMU_EnableRC32K(1);
-  HAL_PMU_LpCLockSelect(PMU_LPCLK_RC32);
 
+  HAL_PMU_LpCLockSelect(PMU_LPCLK_RC32);
+#else
+  HAL_PMU_LpCLockSelect(PMU_LPCLK_RC10);
+#endif
   HAL_PMU_EnableDLL(1);
 
+#ifdef SF32LB52_USE_LXT
   HAL_PMU_EnableXTAL32();
   ret = HAL_PMU_LXTReady();
   PBL_ASSERTN(ret == HAL_OK);
 
   HAL_RTC_ENABLE_LXT();
+#endif
 
   HAL_RCC_LCPU_ClockSelect(RCC_CLK_MOD_LP_PERI, RCC_CLK_PERI_HXT48);
 

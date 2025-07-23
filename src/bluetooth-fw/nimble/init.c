@@ -25,6 +25,7 @@
 #include <os/tick.h>
 #include <semphr.h>
 #include <services/dis/ble_svc_dis.h>
+#include <services/bas/ble_svc_bas.h>
 #include <services/gap/ble_svc_gap.h>
 #include <services/gatt/ble_svc_gatt.h>
 #include <stdlib.h>
@@ -33,7 +34,7 @@
 
 #include "nimble_store.h"
 
-static const uint32_t s_bt_stack_start_stop_timeout_ms = 2000;
+static const uint32_t s_bt_stack_start_stop_timeout_ms = 3000;
 
 extern void pebble_pairing_service_init(void);
 
@@ -116,7 +117,8 @@ bool bt_driver_start(BTDriverConfig *config) {
   ble_svc_gatt_init();
   ble_svc_dis_init();
   pebble_pairing_service_init();
-
+  ble_svc_bas_init();
+  
   ble_hs_sched_start();
   f_rc = xSemaphoreTake(s_host_started, milliseconds_to_ticks(s_bt_stack_start_stop_timeout_ms));
   if (f_rc != pdTRUE) {
@@ -126,7 +128,7 @@ bool bt_driver_start(BTDriverConfig *config) {
 
   rc = ble_hs_util_ensure_addr(0);
   if (rc != 0) {
-    PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_ERROR, "Failed to ensure address: %d", rc);
+    PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_ERROR, "Failed to ensure address: 0x%04x", (uint16_t)rc);
     return false;
   }
 

@@ -16,23 +16,10 @@
 
 #include "drivers/battery.h"
 
-#include "board/board.h"
-#include "drivers/voltage_monitor.h"
 #include "drivers/gpio.h"
 #include "drivers/periph_config.h"
 
-#include <string.h>
-
 static bool s_charging_forced_disable = false;
-
-ADCVoltageMonitorReading battery_read_voltage_monitor(void) {
-  VoltageReading info;
-  voltage_monitor_read(VOLTAGE_MONITOR_BATTERY, &info);
-  return (ADCVoltageMonitorReading) {
-    .vref_total = info.vref_total,
-    .vmon_total = info.vmon_total,
-  };
-}
 
 bool battery_charge_controller_thinks_we_are_charging(void) {
   if (s_charging_forced_disable) {

@@ -237,11 +237,13 @@ extern I2CSlavePort * const I2C_AS7000;
 extern const VoltageMonitorDevice * VOLTAGE_MONITOR_ALS;
 extern const VoltageMonitorDevice * VOLTAGE_MONITOR_BATTERY;
 
-extern const TemperatureSensor * const TEMPERATURE_SENSOR;
+extern const AnalogTemperatureSensor * const TEMPERATURE_SENSOR;
 
 extern HRMDevice * const HRM;
 
 extern QSPIPort * const QSPI;
 extern QSPIFlash * const QSPI_FLASH;
+
+extern MicDevice * const MIC;
 
 extern SPISlavePort * const DIALOG_SPI;

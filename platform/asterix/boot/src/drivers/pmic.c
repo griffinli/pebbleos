@@ -37,28 +37,27 @@
 #define BCHGVTERMR 0x0DU
 #define BCHGVTERMREDUCED_4V00 0x4U
 
+#define ENABLEVBATLOWCHARGE 0x50U
+
+#define NTCCOLD 0x10U
+#define NTCCOLDLSB 0x11U
+#define NTCCOOL 0x12U
+#define NTCCOOLLSB 0x13U
+#define NTCWARM 0x14U
+#define NTCWARMLSB 0x15U
+#define NTCHOT 0x16U
+#define NTCHOTLSB 0x17U
+
 // BUCK
-#define BUCK1ENASET 0x0
 #define BUCK2ENASET 0x2
 
 #define BUCK1PWMCLR 0x5U
 #define BUCK2PWMCLR 0x7U
 #define BUCKPWMCLR_SET 0x01U
 
-#define BUCK1NORMVOUT 0x8U
-#define BUCK1RETVOUT 0x9U
-#define BUCK2NORMVOUT 0xAU
-#define BUCK2RETVOUT 0xBU
-#define BUCKVOUT_1V8 8U
-#define BUCKVOUT_3V0 20U
-
 #define BUCKENCTRL 0xC
 #define BUCKVRETCTRL 0xD
 #define BUCKPWMCTRL 0xE
-
-#define BUCKSWCTRLSET 0xFU
-#define BUCKSWCTRLSET_BUCK1SWCTRLSET 0x01U
-#define BUCKSWCTRLSET_BUCK2SWCTRLSET 0x02U
 
 #define BUCKCTRL0 0x15U
 
@@ -154,20 +153,20 @@ int pmic_init(void) {
     { SHIP_BASE, LPRESETCFG, 0 },
     { SHIP_BASE, TASKSHPHLDCONFIGSTROBE, 1 },
     
-    // Set up the BUCK1 regulator for manual control to 1.8V, automatic
-    // PWM/hysteresis control.
-    { BUCK_BASE, BUCK1ENASET, 1 },
+    // NOTE: BUCK1/2 voltage is set by VSET resistors, and it should never be changed
+    // in software. Also, anomaly 27 would trigger if BUCKnSWCTRLSEL is set to SWCTRL
+    // while BUCKnNORMVOUT and BUCKnVOUTSTATUS are equal, which is our case.
+  
+    // Enable BUCK2 (powers LCD) just in case.
     { BUCK_BASE, BUCK2ENASET, 1 },
+    // Request automatic mode for BUCK1/2
     { BUCK_BASE, BUCK1PWMCLR, 1 },
     { BUCK_BASE, BUCK2PWMCLR, 1 },
-    { BUCK_BASE, BUCK1NORMVOUT, BUCKVOUT_1V8 },
-    { BUCK_BASE, BUCK1RETVOUT, BUCKVOUT_1V8 },
-    { BUCK_BASE, BUCK2NORMVOUT, BUCKVOUT_3V0 },
-    { BUCK_BASE, BUCK2RETVOUT, BUCKVOUT_3V0 },
+    // Disable any type of control via GPIOs
     { BUCK_BASE, BUCKENCTRL, 0 },
     { BUCK_BASE, BUCKVRETCTRL, 0 },
     { BUCK_BASE, BUCKPWMCTRL, 0 },
-    { BUCK_BASE, BUCKSWCTRLSET, BUCKSWCTRLSET_BUCK1SWCTRLSET | BUCKSWCTRLSET_BUCK2SWCTRLSET /* use registers rather than resistor settings */ },
+    // BUCK1/2 auto switching between PFM/PWM, no pull-downs
     { BUCK_BASE, BUCKCTRL0, 0 },
 
     // Configure charger (TODO: values are board/battery dependent)
@@ -180,6 +179,7 @@ int pmic_init(void) {
     //   safety timers) -- this doesn't happen in a loop because after we
     //   fail to boot three times, we will sit at sadwatch until a button is
     //   pressed
+    // - Set COLD/COOL/WARM/HOT tresholds to 0/10/45/45 degrees Celsius
     // - Enable charging
     { VBUSIN_BASE, VBUSINILIMSTARTUP, VBUSLIM_500MA }, // should be default, but 'reset value from OTP, value listed in this table may not be correct'
     { CHARGER_BASE, BCHGENABLECLR, ENABLECHARGING_DISABLECHG },
@@ -190,6 +190,15 @@ int pmic_init(void) {
     { CHARGER_BASE, BCHGISETDISCHARGEMSB, 42 },
     { CHARGER_BASE, TASKCLEARCHGERR, 1 },
     { CHARGER_BASE, TASKRELEASEERROR, 1 },
+    { CHARGER_BASE, NTCCOLD, 0xBBU },
+    { CHARGER_BASE, NTCCOLDLSB, 0x01U },
+    { CHARGER_BASE, NTCCOOL, 0xA4U },
+    { CHARGER_BASE, NTCCOOLLSB, 0x02U },
+    { CHARGER_BASE, NTCWARM, 0x54U },
+    { CHARGER_BASE, NTCWARMLSB, 0x01U },
+    { CHARGER_BASE, NTCHOT, 0x54U },
+    { CHARGER_BASE, NTCHOTLSB, 0x01U },
+    { CHARGER_BASE, ENABLEVBATLOWCHARGE, 0x01U },
     { CHARGER_BASE, BCHGENABLESET, ENABLECHARGING_ENABLECHG },
 
     // LDO1 as LDO @ 1.8V (powers the DA7212 ... do not back power it through I/O pins, and it must always be on because sensors share I2C bus with it!)
