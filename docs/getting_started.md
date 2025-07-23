@@ -37,7 +37,7 @@ sudo apt update
 2. Install required dependencies
 
 ```shell
-sudo apt install clang gcc gcc-multilib git gettext python3-dev python3-venv
+sudo apt install clang gcc gcc-multilib git gettext python3-dev python3-venv openocd
 ```
 
 ::::
@@ -51,6 +51,12 @@ sudo apt install clang gcc gcc-multilib git gettext python3-dev python3-venv
 
 ```shell
 brew link python@3
+```
+
+3. Install `openocd`
+
+```shell
+brew install openocd
 ```
 
 ::::
@@ -98,7 +104,7 @@ git clone --recurse-submodules https://github.com/coredevices/pebbleos
 Once cloned, enter the `pebble-firmware` directory before continuing:
 
 ```shell
-cd pebble-firmware
+cd pebbleos
 ```
 
 ## Python dependencies
@@ -136,7 +142,7 @@ pip install -r requirements.txt
 ./waf configure --board $BOARD
 ```
 
-where `$BOARD` is any of the supported boards, e.g. `snowy_bb2`, `asterix`, ...
+where `$BOARD` is any of the supported boards, e.g. `asterix` (Core 2 Duo), `snowy_bb2` (Pebble Time), ...
 
 2. Build:
 
@@ -146,25 +152,28 @@ where `$BOARD` is any of the supported boards, e.g. `snowy_bb2`, `asterix`, ...
 
 ## Flashing
 
+Before attempting to flash, check the documentation for each {doc}`board <boards/index>` on how to prepare and connect your watch for programming.
+
 You can flash the built firmware (including pre-compiled bootloader) by running:
 
 ```shell
 ./waf flash
 ```
 
-If flashing for the first time, your watch will boot into a _sad watch_ state, indicating that resources need to be flashed:
+If flashing for the first time, your watch will reboot into PRF or a _sad watch_ state if PRF is missing, indicating that resources need to be flashed:
 
 ```shell
-./waf image_resources
+./waf image_resources --tty $SERIAL_ADAPTER
 ```
 
-You will need to add `--tty /path/to/serial/adapter` if not using a big board with built-in FTDI.
+where `$SERIAL_ADAPTER` is the path for your serial adapter, e.g. `/dev/ttyACM0`, `/dev/tty.usbmodem1102`, etc.
+If using a board with a built-in FTDI programmer, the `--tty` argument can be removed.
 
 At this point you should observe the watch booting into the main application.
 You can also see the logs by opening the console:
 
 ```shell
-./waf console
+./waf console --tty $SERIAL_ADAPTER
 ```
 
-Similarly, append `--tty` if needed.
+Try sending `help` to get a list of available console commands.

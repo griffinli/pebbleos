@@ -20,12 +20,13 @@
 #include "drivers/flash/qspi_flash_definitions.h"
 #include "drivers/hrm/as7000.h"
 #include "drivers/i2c_definitions.h"
+#include "drivers/mic/stm32/dfsdm_definitions.h"
 #include "drivers/qspi_definitions.h"
 #include "drivers/stm32f2/dma_definitions.h"
 #include "drivers/stm32f2/i2c_hal_definitions.h"
 #include "drivers/stm32f2/spi_definitions.h"
 #include "drivers/stm32f2/uart_definitions.h"
-#include "drivers/temperature.h"
+#include "drivers/temperature/analog.h"
 #include "drivers/voltage_monitor.h"
 #include "flash_region/flash_region.h"
 #include "util/units.h"
@@ -314,7 +315,7 @@ const VoltageMonitorDevice * VOLTAGE_MONITOR_TEMPERATURE = &VOLTAGE_MONITOR_TEMP
 // Temperature sensor
 // STM32F412 datasheet rev 2
 // Section 6.3.21
-TemperatureSensor const TEMPERATURE_SENSOR_DEVICE = {
+AnalogTemperatureSensor const TEMPERATURE_SENSOR_DEVICE = {
   .voltage_monitor = &VOLTAGE_MONITOR_TEMPERATURE_DEVICE,
   .millivolts_ref = 760,
   .millidegrees_ref = 25000,
@@ -322,7 +323,7 @@ TemperatureSensor const TEMPERATURE_SENSOR_DEVICE = {
   .slope_denominator = 2000,
 };
 
-TemperatureSensor * const TEMPERATURE_SENSOR = &TEMPERATURE_SENSOR_DEVICE;
+AnalogTemperatureSensor * const TEMPERATURE_SENSOR = &TEMPERATURE_SENSOR_DEVICE;
 
 
 //
@@ -438,6 +439,27 @@ static QSPIFlash QSPI_FLASH_DEVICE = {
   .reset_gpio = { GPIO_Port_NULL },
 };
 QSPIFlash * const QSPI_FLASH = &QSPI_FLASH_DEVICE;
+
+
+static MicDeviceState s_mic_state;
+static MicDevice MIC_DEVICE = {
+  .state = &s_mic_state,
+
+  .filter = (DFSDM_TypeDef *) DFSDM1_Filter0_BASE,
+  .channel = DFSDM1_Channel2,
+  .extremes_detector_channel = DFSDM_ExtremChannel2,
+  .regular_channel = DFSDM_RegularChannel2,
+  .pdm_frequency = MHZ_TO_HZ(2),
+  .rcc_apb_periph = RCC_APB2Periph_DFSDM,
+  .dma = &DFSDM_DMA_REQUEST,
+  .ck_gpio = { GPIOC, GPIO_Pin_2, GPIO_PinSource2, GPIO_AF8_DFSDM1 },
+  .sd_gpio = { GPIOB, GPIO_Pin_14, GPIO_PinSource14, GPIO_AF8_DFSDM1 },
+  .power_on_delay_ms = 50,
+  .settling_delay_ms = 0,
+  .default_volume = 64,
+  .final_right_shift = 11,
+};
+MicDevice * const MIC = &MIC_DEVICE;
 
 
 void board_early_init(void) {

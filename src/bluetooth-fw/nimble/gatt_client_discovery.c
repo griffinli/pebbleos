@@ -21,6 +21,13 @@
 
 #include "nimble_type_conversions.h"
 
+#if CAPABILITY_NEEDS_FIRM_233_WAR
+#include "services/common/comm_session/session.h"
+#include "services/common/bluetooth/bluetooth_ctl.h"
+
+static void prv_trigger_firm_233_war(void);
+#endif
+
 // -------------------------------------------------------------------------------------------------
 // Gatt Client Discovery API calls
 
@@ -164,8 +171,8 @@ static void prv_discover_next_dscs(uint16_t conn_handle, GATTServiceDiscoveryCon
       MIN(chr_node->characteristic.val_handle, chr_node->characteristic.def_handle);
   uint16_t end_handle = prv_get_last_dsc_handle(context);
   int rc = ble_gattc_disc_all_dscs(conn_handle, start_handle, end_handle, prv_find_dsc_cb, context);
-  PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_DEBUG, "ble_gattc_disc_all_dscs (%d -> %d) rc=%d",
-            start_handle, end_handle, rc);
+  PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_DEBUG, "ble_gattc_disc_all_dscs (%d -> %d) rc=0x%04x",
+            start_handle, end_handle, (uint16_t)rc);
 }
 
 static void prv_discover_next_chrs(uint16_t conn_handle, GATTServiceDiscoveryContext *context) {
@@ -173,7 +180,7 @@ static void prv_discover_next_chrs(uint16_t conn_handle, GATTServiceDiscoveryCon
       (GATTServiceDiscoveryServiceNode *)context->current_service;
   int rc = ble_gattc_disc_all_chrs(conn_handle, service_node->service.start_handle,
                                    service_node->service.end_handle, prv_find_chr_cb, context);
-  PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_DEBUG, "ble_gattc_disc_all_chrs rc=%d", rc);
+  PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_DEBUG, "ble_gattc_disc_all_chrs rc=0x%04x", (uint16_t)rc);
 }
 
 static GATTServiceDiscoveryDescriptorNode *prv_create_descriptor_node(
@@ -222,6 +229,7 @@ static void prv_list_append_or_set(ListNode **list, ListNode *node) {
 static int prv_find_dsc_cb(uint16_t conn_handle, const struct ble_gatt_error *error,
                            uint16_t chr_val_handle, const struct ble_gatt_dsc *dsc, void *arg) {
   GATTServiceDiscoveryContext *context = arg;
+  BTErrno errno;
 
   switch (error->status) {
     case 0:
@@ -264,8 +272,15 @@ static int prv_find_dsc_cb(uint16_t conn_handle, const struct ble_gatt_error *er
     default:
       PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_ERROR, "discovery: descriptor discovery error: %d",
                 error->status);
-      bt_driver_cb_gatt_client_discovery_complete(context->connection,
-                                                  BTErrnoInternalErrorBegin + error->status);
+      if (error->status == BLE_HS_ETIMEOUT) {
+        errno = BTErrnoServiceDiscoveryTimeout;
+      } else if (error->status == BLE_HS_ENOTCONN) {
+        errno = BTErrnoServiceDiscoveryDisconnected;
+      } else {
+        errno = BTErrnoInternalErrorBegin + error->status;
+      }
+
+      bt_driver_cb_gatt_client_discovery_complete(context->connection, errno);
       prv_free_discovery_context(context);
       break;
   }
@@ -276,6 +291,7 @@ static int prv_find_dsc_cb(uint16_t conn_handle, const struct ble_gatt_error *er
 static int prv_find_chr_cb(uint16_t conn_handle, const struct ble_gatt_error *error,
                            const struct ble_gatt_chr *chr, void *arg) {
   GATTServiceDiscoveryContext *context = arg;
+  BTErrno errno;
 
   switch (error->status) {
     case 0:
@@ -315,8 +331,15 @@ static int prv_find_chr_cb(uint16_t conn_handle, const struct ble_gatt_error *er
     default:
       PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_DEBUG, "discovery: characteristic discovery error: %d",
                 error->status);
-      bt_driver_cb_gatt_client_discovery_complete(context->connection,
-                                                  BTErrnoInternalErrorBegin + error->status);
+      if (error->status == BLE_HS_ETIMEOUT) {
+        errno = BTErrnoServiceDiscoveryTimeout;
+      } else if (error->status == BLE_HS_ENOTCONN) {
+        errno = BTErrnoServiceDiscoveryDisconnected;
+      } else {
+        errno = BTErrnoInternalErrorBegin + error->status;
+      }
+
+      bt_driver_cb_gatt_client_discovery_complete(context->connection, errno);
       prv_free_discovery_context(context);
       break;
   }
@@ -327,6 +350,7 @@ static int prv_find_chr_cb(uint16_t conn_handle, const struct ble_gatt_error *er
 static int prv_find_inc_svc_cb(uint16_t conn_handle, const struct ble_gatt_error *error,
                                const struct ble_gatt_svc *service, void *arg) {
   GATTServiceDiscoveryContext *context = arg;
+  BTErrno errno;
 
   switch (error->status) {
     case 0:
@@ -360,8 +384,22 @@ static int prv_find_inc_svc_cb(uint16_t conn_handle, const struct ble_gatt_error
 
     default:
       PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_ERROR, "service discovery error: %d", error->status);
-      bt_driver_cb_gatt_client_discovery_complete(context->connection,
-                                                  BTErrnoInternalErrorBegin + error->status);
+      if (error->status == BLE_HS_ETIMEOUT) {
+        errno = BTErrnoServiceDiscoveryTimeout;
+      } else if (error->status == BLE_HS_ENOTCONN) {
+        errno = BTErrnoServiceDiscoveryDisconnected;
+      } else {
+        errno = BTErrnoInternalErrorBegin + error->status;
+      }
+
+#if CAPABILITY_NEEDS_FIRM_233_WAR
+      // FIRM-233: sometimes, we see this error, and then we never connect
+      // again.  workaround is to autonomously cycle airplane mode on a
+      // delay
+      prv_trigger_firm_233_war();
+#endif
+
+      bt_driver_cb_gatt_client_discovery_complete(context->connection, errno);
       prv_free_discovery_context(context);
       break;
   }
@@ -390,3 +428,59 @@ BTErrno bt_driver_gatt_start_discovery_range(const GAPLEConnection *connection,
 BTErrno bt_driver_gatt_stop_discovery(GAPLEConnection *connection) { return 0; }
 
 void bt_driver_gatt_handle_discovery_abandoned(void) {}
+
+#if CAPABILITY_NEEDS_FIRM_233_WAR
+
+// -------------------------------------------------------------------------------------------------
+// Workaround for FIRM-233, unknown condition that causes BLE to wedge: if
+// we detect the error condition, start a timer for 5 seconds.  If we
+// haven't connected by then, turn airplane mode on, and then turn it back
+// off again five seconds later.
+
+#define FIRM_233_WAR_WAIT_TO_CYCLE_MS 5000
+#define FIRM_233_WAR_AIRPLANE_MODE_TIME_MS 5000
+
+uint32_t metric_firm_233_airplane_mode_cycles = 0;
+uint32_t metric_firm_233_log_events = 0;
+
+static TimerID s_firm_233_timer;
+
+static void prv_firm_233_begin_cycle(void *arg);
+static void prv_firm_233_finish_cycle(void *arg);
+
+static void prv_trigger_firm_233_war(void) {
+  metric_firm_233_log_events++;
+
+  if (s_firm_233_timer) {
+    // We have already triggered the WAR and are in the process of cycling -- ignore this.
+    return;
+  }
+
+  PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_ERROR, "triggering WAR for FIRM-233");
+  s_firm_233_timer = new_timer_create();
+  new_timer_start(s_firm_233_timer, FIRM_233_WAR_WAIT_TO_CYCLE_MS, prv_firm_233_begin_cycle, NULL, 0 /* flags */);
+}
+
+static void prv_firm_233_begin_cycle(void *arg) {
+  if (comm_session_get_system_session() != NULL) {
+    PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_ERROR, "FIRM-233 WAR: somehow, we connected anyway?  not cycling airplane mode");
+    new_timer_delete(s_firm_233_timer);
+    s_firm_233_timer = 0;
+    return;
+  }
+
+  PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_ERROR, "FIRM-233 WAR: entering airplane mode");
+  bt_ctl_set_override_mode(BtCtlModeOverrideStop);
+  new_timer_start(s_firm_233_timer, FIRM_233_WAR_AIRPLANE_MODE_TIME_MS, prv_firm_233_finish_cycle, NULL, 0 /* flags */);
+}
+
+static void prv_firm_233_finish_cycle(void *arg) {
+  PBL_LOG_D(LOG_DOMAIN_BT, LOG_LEVEL_ERROR, "FIRM-233 WAR: exiting airplane mode");
+  bt_ctl_set_override_mode(BtCtlModeOverrideNone);
+  metric_firm_233_airplane_mode_cycles++;
+
+  new_timer_delete(s_firm_233_timer);
+  s_firm_233_timer = 0;
+}
+
+#endif /* CAPABILITY_NEEDS_FIRM_233_WAR */

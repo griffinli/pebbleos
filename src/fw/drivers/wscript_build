@@ -189,6 +189,7 @@ elif bld.is_asterix():
             'driver_imu',
             'driver_mcu',
             'driver_mpu',
+            'driver_nrf5_hfxo',
             'driver_otp',
             'driver_periph_config',
             'driver_pmic',
@@ -199,7 +200,6 @@ elif bld.is_asterix():
             'driver_temperature',
             'driver_uart',
             'driver_vibe',
-            'driver_voltage_monitor',
         ],
     )
 
@@ -230,7 +230,7 @@ elif bld.is_obelix():
             'driver_temperature',
             'driver_uart',
             'driver_vibe',
-            'driver_voltage_monitor',
+            'driver_pwm',
         ],
     )
 ## ----------
@@ -375,6 +375,7 @@ if bld.env.QEMU:
         source=[
             'battery/battery_adc_conversion.c',
             'battery/battery_common.c',
+            'battery/battery_voltage_monitor.c',
             'qemu/qemu_battery.c',
         ],
         use=[
@@ -392,6 +393,7 @@ elif bld.is_tintin():
             'battery/battery_adc_conversion.c',
             'battery/battery_common.c',
             'battery/battery_tintin.c',
+            'battery/battery_voltage_monitor.c',
         ],
         use=[
             'driver_exti',
@@ -435,6 +437,7 @@ else:
             'battery/battery_adc_conversion.c',
             'battery/battery_common.c',
             'battery/battery_pmic.c',
+            'battery/battery_voltage_monitor.c',
         ],
         use=[
             'driver_gpio',
@@ -654,7 +657,7 @@ elif mcu_family == 'SF32LB52':
     bld.objects(
         name='driver_exti',
         source=[
-            'stubs/exti.c',
+            'sf32lb52/exti.c',
         ],
         use=[
             'fw_includes',
@@ -830,7 +833,7 @@ elif mcu_family == 'SF32LB52':
     bld.objects(
         name='driver_gpio',
         source=[
-            'stubs/gpio.c',
+            'sf32lb52/gpio.c',
         ],
         use=[
             'fw_includes',
@@ -977,7 +980,7 @@ elif mcu_family == 'SF32LB52':
         name='driver_i2c',
         source=[
             'i2c.c',
-            'stubs/i2c.c',
+            'sf32lb52/i2c_hal.c',
         ],
         use=[
             'fw_includes',
@@ -1039,11 +1042,23 @@ elif bld.is_silk():
             'root_includes',
         ],
     )
-elif bld.is_asterix() or bld.is_obelix():
+elif bld.is_asterix():
     bld.objects(
         name='driver_imu',
         source=[
             'imu/imu_asterix.c',
+        ],
+        use=[
+            'driver_lsm6dso',
+            'fw_includes',
+            'root_includes',
+        ],
+    )
+elif bld.is_obelix():
+    bld.objects(
+        name='driver_imu',
+        source=[
+            'stubs/imu.c',
         ],
         use=[
             'driver_lsm6dso',
@@ -1149,11 +1164,31 @@ elif mcu_family == 'SF32LB52':
         ],
     )
 
-if bld.capability('HAS_MICROPHONE'):
+if bld.is_snowy_compatible():
     bld.objects(
         name='driver_mic',
         source=[
             'mic/mic_command.c',
+            'mic/stm32/pdm.c',
+        ],
+        use=[
+            'driver_accessory',
+            'driver_dma',
+            'driver_gpio',
+            'driver_periph_config',
+            'driver_pmic',
+            'fw_includes',
+            'root_includes',
+            'freertos',
+            'stm32_stdlib',
+        ],
+    )
+elif bld.is_silk() or bld.is_cutts() or bld.is_robert():
+    bld.objects(
+        name='driver_mic',
+        source=[
+            'mic/mic_command.c',
+            'mic/stm32/dfsdm.c',
         ],
         use=[
             'driver_accessory',
@@ -1368,7 +1403,17 @@ elif mcu_family == 'NRF52840':
             'hal_nordic',
         ]
     )
-
+elif mcu_family == 'SF32LB52':
+    bld.objects(
+        name='driver_pwm',
+        source=[
+            'sf32lb52/pwm.c',
+        ],
+        use=[
+            'fw_includes',
+            'hal_sifli',
+         ]
+    )
 
 if 'STM32F412xG' in bld.env.DEFINES or mcu_family in ('STM32F7',):
     bld.objects(
@@ -1412,6 +1457,7 @@ elif mcu_family == 'SF32LB52':
     )
 
 if 'STM32F412xG' in bld.env.DEFINES:
+    bld.env.DEFINES.append('HAS_DRIVER_VOLTAGE_MONITOR')
     bld.objects(
         name='driver_voltage_monitor',
         source=[
@@ -1426,6 +1472,7 @@ if 'STM32F412xG' in bld.env.DEFINES:
         ]
     )
 elif mcu_family in ('STM32F2', 'STM32F4', 'STM32F7'):
+    bld.env.DEFINES.append('HAS_DRIVER_VOLTAGE_MONITOR')
     bld.objects(
         name='driver_voltage_monitor',
         source=[
@@ -1439,28 +1486,7 @@ elif mcu_family in ('STM32F2', 'STM32F4', 'STM32F7'):
             'stm32_stdlib',
         ]
     )
-elif mcu_family == 'NRF52840':
-    # FIXME: provide working implementation
-    bld.objects(
-        name='driver_voltage_monitor',
-        source=[
-            'stubs/voltage_monitor.c',
-        ],
-        use=[
-            'fw_includes',
-        ]
-    )
-elif mcu_family == 'SF32LB52':
-    # FIXME(SF32LB52): provide working implementation
-    bld.objects(
-        name='driver_voltage_monitor',
-        source=[
-            'stubs/voltage_monitor.c',
-        ],
-        use=[
-            'fw_includes',
-        ]
-    )
+
 
 if mcu_family in ('STM32F2', 'STM32F4', 'STM32F7'):
     bld.objects(
@@ -1491,7 +1517,7 @@ elif mcu_family == 'SF32LB52':
     bld.objects(
         name='driver_rng',
         source=[
-            'stubs/rng.c',
+            'sf32lb52/rng.c',
         ],
         use=[
             'fw_includes',
@@ -1827,6 +1853,19 @@ if bld.get_hrm() == 'AS7000':
             'driver_i2c',
             'fw_includes',
             'stm32_stlib'
+        ],
+    )
+
+if mcu_family == 'NRF52840':
+    bld.objects(
+        name='driver_nrf5_hfxo',
+        source=[
+            'nrf5/hfxo.c',
+        ],
+        use=[
+            'fw_includes',
+            'freertos',
+            'hal_nordic',
         ],
     )
 

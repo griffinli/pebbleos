@@ -16,18 +16,7 @@
 
 #pragma once
 
-#include <stdbool.h>
 #include <stdint.h>
-
-#include "board/board.h"
-
-struct TemperatureSensor {
-  const VoltageMonitorDevice *voltage_monitor;
-  int32_t millivolts_ref;
-  int32_t millidegrees_ref;
-  int32_t slope_numerator;
-  int32_t slope_denominator;
-};
 
 void temperature_init(void);
 

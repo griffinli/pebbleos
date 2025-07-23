@@ -24,20 +24,45 @@
  * comments are relevant to both snowy and previous generations
  * ********************************************************************/
 
+//! Battery charge status.
+typedef enum {
+  //! Unknown charge status.
+  BatteryChargeStatusUnknown,
+  //! Charging is complete, battery full.
+  BatteryChargeStatusComplete,
+  //! Battery is in trickle charge mode.
+  BatteryChargeStatusTrickle,
+  //! Battery is in constant current charge mode.
+  BatteryChargeStatusCC,
+  //! Battery is in constant voltage charge mode.
+  BatteryChargeStatusCV,
+} BatteryChargeStatus;
+
+//! Battery constants.
+typedef struct BatteryConstants {
+  //!< Battery voltage in millivolts.
+  int32_t v_mv;
+  //!< Battery current in microamperes.
+  int32_t i_ua;
+  //!< Battery temperature in millidegrees Celsius.
+  int32_t t_mc;
+} BatteryConstants;
 
 void battery_init(void);
-
-/**
- * Check if the battery is present.
- *
- * @retval true if the battery is present (or driver does not support checking).
- * @retval false if the battery is not present.
-*/
-bool battery_is_present(void);
 
 /** @returns the battery voltage after smoothing and averaging
  */
 int battery_get_millivolts(void);
+
+/**
+ * Obtain battery constants.
+ *
+ * @param[out] constants
+ *
+ * @retval 0 On success.
+ * @retval error Error code on failure.
+ */
+int battery_get_constants(BatteryConstants *constants);
 
 /** @returns true if the battery charge controller thinks we are charging.
  * This is often INCORRECT on Pebble Steel due to the additional current
@@ -83,3 +108,10 @@ ADCVoltageMonitorReading battery_read_voltage_monitor(void);
 uint32_t battery_convert_reading_to_millivolts(ADCVoltageMonitorReading reading,
                                                uint32_t numerator, uint32_t denominator);
 
+//! Get the current battery charge status.
+//!
+//! @param[out] status The current charge status.
+//!
+//! @retval 0 On success.
+//! @retval error Error code on failure.
+int battery_charge_status_get(BatteryChargeStatus *status);

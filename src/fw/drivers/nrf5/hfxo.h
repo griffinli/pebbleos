@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
+#pragma once
 
-#define SAMPLE_FREQUENCY   44100
-#define BYTES_PER_SAMPLE   sizeof(int16_t)
-#define NUMBER_OF_CHANNELS 2
+/** @brief Request HFXO clock (reference counted). */
+void nrf52_clock_hfxo_request(void);
 
-/* Such block length provides an echo with the delay of 100 ms. */
-#define SAMPLES_PER_BLOCK ((SAMPLE_FREQUENCY / 10) * NUMBER_OF_CHANNELS)
-#define BLOCK_SIZE        (BYTES_PER_SAMPLE * SAMPLES_PER_BLOCK)
-
-extern int16_t audio_data[BLOCK_SIZE];
+/** @brief Release HFXO clock (reference counted). */
+void nrf52_clock_hfxo_release(void);
